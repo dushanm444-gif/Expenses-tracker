@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LK Wealth - 2-Page Multi-Ledger Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Hide scrollbars but keep functionality */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+
+    <div class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <h1 class="text-lg font-black text-emerald-400 tracking-tight">LK WEALTH MULTI-PAGE</h1>
+                <p class="text-[10px] text-slate-400 font-mono">100% Offline Device Storage Active 🌐</p>
+            </div>
+            <input type="month" id="monthFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none" onchange="loadMonthData()">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
+            <button id="btnPage1" onclick="switchPage('page1')" class="py-2 text-xs font-bold rounded-md transition-all text-emerald-400 bg-slate-900 border border-slate-700/50">
+                📊 Dashboard Config (Page 1)
+            </button>
+            <button id="btnPage2" onclick="switchPage('page2')" class="py-2 text-xs font-bold rounded-md transition-all text-slate-400 hover:text-slate-200">
+                ✍️ Daily Ledger Entries (Page 2)
+            </button>
+        </div>
+    </div>
+
+    <div class="p-4 max-w-md mx-auto space-y-5">
+        
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs gap-2">
+            <div class="flex space-x-2">
+                <button onclick="exportBackup()" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg font-semibold text-[11px]">📥 Backup</button>
+                <button onclick="document.getElementById('importFile').click()" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg font-semibold text-[11px]">📤 Restore</button>
+                <input type="file" id="importFile" accept=".json" class="hidden" onchange="importBackup(event)">
+            </div>
+            <button onclick="clearAllData()" class="text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1.5 rounded-lg text-[11px]">🗑️ Clear</button>
+        </div>
+
+        <div id="page1" class="space-y-5">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-md space-y-4">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">💰 Monthly Revenue Target Settings</h2>
+                
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Total Expected Monthly Income (LKR)</label>
+                    <input type="number" id="txtIncome" value="150000" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-emerald-400 font-extrabold text-base focus:border-emerald-500 focus:outline-none">
+                </div>
+
+                <button onclick="saveIncomeConfig()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs p-3 rounded-lg active:scale-[0.98] transition-transform uppercase tracking-wider flex justify-center items-center gap-2">
+                    🔄 Refresh & Recalculate Budgets
+                </button>
+            </div>
+
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-md space-y-4">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">📊 Target Formula vs Actual Expenses</h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-amber-400 font-bold">🏠 Needs (50% Target Limit)</span>
+                            <span id="lblNeedsPct" class="text-slate-400 font-bold">0%</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[11px] mt-2 pt-2 border-t border-slate-900">
+                            <div><span class="text-slate-500 block">Formula Target:</span> <span id="targetNeeds" class="font-bold text-slate-300">Rs. 0</span></div>
+                            <div><span class="text-slate-500 block">Actual Logged:</span> <span id="actualNeeds" class="font-bold text-amber-400">Rs. 0</span></div>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 mt-2.5">
+                            <div id="barNeeds" class="bg-amber-500 h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-pink-400 font-bold">🎬 Wants (30% Target Limit)</span>
+                            <span id="lblWantsPct" class="text-slate-400 font-bold">0%</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[11px] mt-2 pt-2 border-t border-slate-900">
+                            <div><span class="text-slate-500 block">Formula Target:</span> <span id="targetWants" class="font-bold text-slate-300">Rs. 0</span></div>
+                            <div><span class="text-slate-500 block">Actual Logged:</span> <span id="actualWants" class="font-bold text-pink-400">Rs. 0</span></div>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 mt-2.5">
+                            <div id="barWants" class="bg-pink-500 h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-emerald-400 font-bold">📈 Investments / Savings (20% Min Target)</span>
+                            <span id="lblSavePct" class="text-slate-400 font-bold">0%</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[11px] mt-2 pt-2 border-t border-slate-900">
+                            <div><span class="text-slate-500 block">Formula Target:</span> <span id="targetSave" class="font-bold text-slate-300">Rs. 0</span></div>
+                            <div><span class="text-slate-500 block">Actual Logged:</span> <span id="actualSave" class="font-bold text-emerald-400">Rs. 0</span></div>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 mt-2.5">
+                            <div id="barSave" class="bg-emerald-500 h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-center">
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Leftover Monthly Cash</span>
+                    <div id="lblLeftover" class="text-base font-bold text-blue-400">Rs. 0</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <span class="text-[10px] text-slate-400 block mb-0.5">Total Allocation Rate</span>
+                    <div id="lblSavingsRate" class="text-base font-bold text-indigo-400">0%</div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col items-center shadow-md">
+                <div class="w-40 h-40"><canvas id="budgetChart"></canvas></div>
+            </div>
+        </div>
+
+        <div id="page2" class="space-y-5 hidden">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-md space-y-3">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">✍️ Log Daily Expense Line</h2>
+                
+                <form id="expenseForm" onsubmit="addExpenseEntry(event)" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Date</label>
+                            <input type="date" id="expDate" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Allocation Bucket Type</label>
+                            <select id="expType" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none">
+                                <option value="needs">🏠 Needs (Rent, Food, Bill)</option>
+                                <option value="wants">🎬 Wants (Fun, Clothes, Lifestyle)</option>
+                                <option value="investments">📈 Investment & Savings</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-2">
+                            <label class="block text-[11px] text-slate-400 mb-1">Description</label>
+                            <input type="text" id="expDesc" required placeholder="e.g. Fuel, Lunch" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Amount (Rs.)</label>
+                            <input type="number" id="expAmount" required placeholder="1200" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-bold text-rose-400 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-emerald-500 text-slate-950 font-bold text-xs p-2.5 rounded-lg active:scale-[0.99] transition-transform shadow-sm">
+                        ➕ Add Transaction Entry
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-md space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">📋 Logged Transactions Statement</h2>
+                    <select id="filterType" onchange="renderHistoryStatement()" class="bg-slate-950 border border-slate-700 text-[10px] rounded px-1.5 py-0.5 text-slate-300">
+                        <option value="all">All Items</option>
+                        <option value="needs">Needs Only</option>
+                        <option value="wants">Wants Only</option>
+                        <option value="investments">Investments Only</option>
+                    </select>
+                </div>
+                
+                <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Data Schema Architecture Layout Configuration
+        let appData = {
+            incomes: {},   // format: {"YYYY-MM": 150000}
+            expenses: []   // array objects: [{id, date, type, desc, amount}]
+        };
+
+        let budgetChart;
+
+        window.onload = function() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('monthFilter').value = `${yyyy}-${mm}`;
+            document.getElementById('expDate').value = today.toISOString().split('T')[0];
+
+            if(localStorage.getItem('LK_MULTI_LEDGER_DATA')) {
+                try { appData = JSON.parse(localStorage.getItem('LK_MULTI_LEDGER_DATA')); } catch(e) {}
+            }
+            initChartEngine();
+            loadMonthData();
+        };
+
+        function switchPage(pageId) {
+            if(pageId === 'page1') {
+                document.getElementById('page1').classList.remove('hidden');
+                document.getElementById('page2').classList.add('hidden');
+                document.getElementById('btnPage1').className = "py-2 text-xs font-bold rounded-md transition-all text-emerald-400 bg-slate-900 border border-slate-700/50";
+                document.getElementById('btnPage2').className = "py-2 text-xs font-bold rounded-md transition-all text-slate-400 hover:text-slate-200";
+            } else {
+                document.getElementById('page1').classList.add('hidden');
+                document.getElementById('page2').classList.remove('hidden');
+                document.getElementById('btnPage1').className = "py-2 text-xs font-bold rounded-md transition-all text-slate-400 hover:text-slate-200";
+                document.getElementById('btnPage2').className = "py-2 text-xs font-bold rounded-md transition-all text-emerald-400 bg-slate-900 border border-slate-700/50";
+            }
+        }
+
+        function initChartEngine() {
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            budgetChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Needs Actual', 'Wants Actual', 'Investments Actual', 'Leftover Cash'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#f59e0b', '#ec4899', '#10b981', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function getActiveMonth() { return document.getElementById('monthFilter').value; }
+
+        function loadMonthData() {
+            const m = getActiveMonth();
+            document.getElementById('txtIncome').value = appData.incomes[m] !== undefined ? appData.incomes[m] : "150000";
+            calculateBudgetAndRender();
+        }
+
+        function saveIncomeConfig() {
+            const m = getActiveMonth();
+            appData.incomes[m] = parseFloat(document.getElementById('txtIncome').value) || 0;
+            saveToStorage();
+            calculateBudgetAndRender();
+        }
+
+        function addExpenseEntry(e) {
+            e.preventDefault();
+            const dateVal = document.getElementById('expDate').value;
+            const entry = {
+                id: Date.now(),
+                date: dateVal,
+                type: document.getElementById('expType').value,
+                desc: document.getElementById('expDesc').value,
+                amount: parseFloat(document.getElementById('expAmount').value) || 0
+            };
+
+            appData.expenses.push(entry);
+            saveToStorage();
+
+            // Clear inputs
+            document.getElementById('expDesc').value = '';
+            document.getElementById('expAmount').value = '';
+
+            // Auto shift month filter line item if logs belong to different cycle month
+            const targetMonthStr = dateVal.substring(0, 7);
+            document.getElementById('monthFilter').value = targetMonthStr;
+
+            loadMonthData();
+        }
+
+        function deleteExpenseEntry(id) {
+            appData.expenses = appData.expenses.filter(item => item.id !== id);
+            saveToStorage();
+            calculateBudgetAndRender();
+        }
+
+        function saveToStorage() { localStorage.setItem('LK_MULTI_LEDGER_DATA', JSON.stringify(appData)); }
+
+        function calculateBudgetAndRender() {
+            const m = getActiveMonth();
+            const income = appData.incomes[m] !== undefined ? appData.incomes[m] : 150000;
+
+            // Filter out exact entries corresponding to selected calendar node
+            const filteredExpenses = appData.expenses.filter(item => item.date.substring(0, 7) === m);
+
+            let actNeeds = 0, actWants = 0, actInvest = 0;
+            filteredExpenses.forEach(item => {
+                if(item.type === 'needs') actNeeds += item.amount;
+                if(item.type === 'wants') actWants += item.amount;
+                if(item.type === 'investments') actInvest += item.amount;
+            });
+
+            // Calculate exact theoretical 50/30/20 Ideal metrics directly mapping from income pools
+            const idealNeeds = income * 0.50;
+            const idealWants = income * 0.30;
+            const idealSave  = income * 0.20;
+
+            // Variances & Leftover totals
+            const totalSpent = actNeeds + actWants + actInvest;
+            const leftoverCash = income - totalSpent;
+            const allocationPercentageRate = income > 0 ? (totalSpent / income) * 100 : 0;
+
+            // Inject absolute numbers directly onto interface
+            document.getElementById('targetNeeds').innerText = `Rs. ${idealNeeds.toLocaleString('en-LK')}`;
+            document.getElementById('targetWants').innerText = `Rs. ${idealWants.toLocaleString('en-LK')}`;
+            document.getElementById('targetSave').innerText = `Rs. ${idealSave.toLocaleString('en-LK')}`;
+
+            document.getElementById('actualNeeds').innerText = `Rs. ${actNeeds.toLocaleString('en-LK')}`;
+            document.getElementById('actualWants').innerText = `Rs. ${actWants.toLocaleString('en-LK')}`;
+            document.getElementById('actualSave').innerText = `Rs. ${actInvest.toLocaleString('en-LK')}`;
+
+            // Calculate precise allocation ratio bars rendering percentages
+            const nPct = income > 0 ? (actNeeds / income) * 100 : 0;
+            const wPct = income > 0 ? (actWants / income) * 100 : 0;
+            const sPct = income > 0 ? (actInvest / income) * 100 : 0;
+
+            document.getElementById('lblNeedsPct').innerText = `${nPct.toFixed(1)}%`;
+            document.getElementById('barNeeds').style.width = `${Math.min(nPct, 100)}%`;
+            document.getElementById('lblWantsPct').innerText = `${wPct.toFixed(1)}%`;
+            document.getElementById('barWants').style.width = `${Math.min(wPct, 100)}%`;
+            document.getElementById('lblSavePct').innerText = `${sPct.toFixed(1)}%`;
+            document.getElementById('barSave').style.width = `${Math.min(sPct, 100)}%`;
+
+            document.getElementById('lblLeftover').innerText = `Rs. ${leftoverCash.toLocaleString('en-LK')}`;
+            document.getElementById('lblSavingsRate').innerText = `${allocationPercentageRate.toFixed(1)}%`;
+
+            if (budgetChart) {
+                budgetChart.data.datasets[0].data = [actNeeds, actWants, actInvest, Math.max(0, leftoverCash)];
+                budgetChart.update();
+            }
+
+            renderHistoryStatement();
+        }
+
+        function renderHistoryStatement() {
+            const m = getActiveMonth();
+            const filter = document.getElementById('filterType').value;
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+
+            let matchedList = appData.expenses.filter(item => item.date.substring(0, 7) === m);
+            if(filter !== 'all') matchedList = matchedList.filter(item => item.type === filter);
+            
+            matchedList.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            if(matchedList.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No matching transactions logged.</p>`;
+                return;
+            }
+
+            matchedList.forEach(item => {
+                const colors = {
+                    needs: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+                    wants: 'bg-pink-500/10 text-pink-400 border border-pink-500/20',
+                    investments: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                };
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs text-slate-300";
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[10px] text-slate-500">${item.date}</span>
+                            <span class="text-[9px] px-1 rounded uppercase font-bold tracking-wide ${colors[item.type]}">${item.type}</span>
+                        </div>
+                        <div class="font-medium text-slate-200 mt-0.5">${item.desc}</div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-bold text-rose-400">Rs. ${item.amount.toLocaleString('en-LK')}</span>
+                        <button onclick="deleteExpenseEntry(${item.id})" class="text-slate-500 hover:text-red-400 text-base font-bold">&times;</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Backup and Sync utilities
+        function exportBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const anchor = document.createElement('a');
+            anchor.setAttribute("href", dataStr);
+            anchor.setAttribute("download", `LK_MultiPage_Ledger_Backup.json`);
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    appData = JSON.parse(e.target.result);
+                    saveToStorage();
+                    loadMonthData();
+                    alert("✅ All Data Restored Successfully!");
+                } catch (err) { alert("❌ Format error inside JSON."); }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if(confirm("Are you sure you want to completely erase device history?")) {
+                appData = { incomes: {}, expenses: [] };
+                saveToStorage();
+                loadMonthData();
+            }
+        }
+    </script>
+</body>
+</html>
